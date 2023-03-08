@@ -192,10 +192,10 @@ class DirectMail extends AbstractPlugin
 
         $this->conf = $conf;
         $this->pi_loadLL('EXT:direct_mail/Resources/Private/Language/Plaintext/locallang.xlf');
-        $this->siteUrl = $this->conf['siteUrl'];
+        $this->siteUrl = $this->conf['siteUrl'] ?? '';
 
         // Default linebreak;
-        if ($this->conf['flowedFormat']) {
+        if ($this->conf['flowedFormat'] ?? false) {
             $this->linebreak = chr(32) . LF;
         }
     }
@@ -223,7 +223,7 @@ class DirectMail extends AbstractPlugin
      */
     public function getShortcut()
     {
-        $str = $this->cObj->cObjGetSingle($this->conf['shortcut'], $this->conf['shortcut.']);
+        $str = $this->cObj->cObjGetSingle($this->conf['shortcut'] ?? '', $this->conf['shortcut.'] ?? []);
 
         // Remove html comment reporting shortcut inclusion
         return preg_replace('/<![ \r\n\t]*(--([^\-]|[\r\n]|-[^\-])*--[ \r\n\t]*)\>/', '', $str);
@@ -294,7 +294,7 @@ class DirectMail extends AbstractPlugin
             }
 
             $images = $this->renderImages($imagesArray, $fieldname);
-        } 
+        }
         else {
             $images = '';
         }
@@ -312,12 +312,14 @@ class DirectMail extends AbstractPlugin
      */
     public function parseBody($str, $altConf = 'bodytext')
     {
-        if ($this->conf[$altConf . '.']['doubleLF']) {
+        if (isset($this->conf[$altConf . '.']['doubleLF'])) {
             $str = preg_replace("/\n/", "\n\n", $str);
         }
         // Regular parsing:
         $str = preg_replace('/<br\s*\/?>/i', LF, $str);
-        $str = $this->cObj->stdWrap($str, $this->conf[$altConf . '.']['stdWrap.']);
+        if (isset($this->conf[$altConf . '.']['stdWrap.'])) {
+            $str = $this->cObj->stdWrap($str, $this->conf[$altConf . '.']['stdWrap.']);
+        }
 
         // Then all a-tags:
         $aConf = [];
@@ -327,7 +329,7 @@ class DirectMail extends AbstractPlugin
         $str = $this->cObj->stdWrap($str, $aConf);
         $str = str_replace('&nbsp;', ' ', htmlspecialchars_decode($str));
 
-        if ($this->conf[$altConf . '.']['header']) {
+        if (isset($this->conf[$altConf . '.']['header'])) {
             $str = $this->getString($this->conf[$altConf . '.']['header']) . LF . $str;
         }
 
@@ -348,9 +350,7 @@ class DirectMail extends AbstractPlugin
         $lines = [];
 
         if (count($files) > 0 && strlen($files[0])) {
-            if ($this->conf['uploads.']['header']) {
-                $lines[] = $this->getString($this->conf['uploads.']['header']);
-            }
+            $lines[] = $this->getString($this->conf['uploads.']['header'] ?? '');
             foreach ($files as $file) {
                 $lines[] = $this->siteUrl . $uploadPath . $file;
             }
@@ -369,41 +369,41 @@ class DirectMail extends AbstractPlugin
     public function renderHeader($str, $type = 0)
     {
         if ($str) {
-            $hConf = $this->conf['header.'];
-            $defaultType = DirectMailUtility::intInRangeWrapper((int)$hConf['defaultType'], 1, 5);
+            $hConf = $this->conf['header.'] ?? [];
+            $defaultType = DirectMailUtility::intInRangeWrapper((int)($hConf['defaultType'] ?? 0), 1, 5);
             $type = DirectMailUtility::intInRangeWrapper((int)$type, 0, 6);
             if (!$type) {
                 $type = $defaultType;
             }
             if ($type != 6) {
                 // not hidden
-                $tConf = $hConf[$type . '.'];
+                $tConf = $hConf[$type . '.'] ?? [];
 
-                if ($tConf['removeSplitChar']) {
+                if (isset($tConf['removeSplitChar'])) {
                     $str = preg_replace('/' . preg_quote($tConf['removeSplitChar'], '/') . '/', '', $str);
                 }
 
                 $lines = [];
 
-                $blanks = DirectMailUtility::intInRangeWrapper((int)$tConf['preBlanks'], 0, 1000);
+                $blanks = DirectMailUtility::intInRangeWrapper((int)($tConf['preBlanks'] ?? 0), 0, 1000);
                 if ($blanks) {
                     $lines[] = str_pad('', $blanks-1, LF);
                 }
 
-                $lines = $this->pad($lines, $tConf['preLineChar'], $tConf['preLineLen']);
+                $lines = $this->pad($lines, $tConf['preLineChar'] ?? '', (int)($tConf['preLineLen'] ?? 0));
 
-                $blanks = DirectMailUtility::intInRangeWrapper((int)$tConf['preLineBlanks'], 0, 1000);
+                $blanks = DirectMailUtility::intInRangeWrapper((int)($tConf['preLineBlanks'] ?? 0), 0, 1000);
                 if ($blanks) {
                     $lines[] = str_pad('', $blanks-1, LF);
                 }
 
                 if ($this->cObj->data['date']) {
-                    $lines[] = $this->getString($hConf['datePrefix']) . date($hConf['date']?$hConf['date']:'d-m-Y', $this->cObj->data['date']);
+                    $lines[] = $this->getString($hConf['datePrefix'] ?? '') . date($hConf['date'] ?: 'd-m-Y', $this->cObj->data['date']);
                 }
 
                 $prefix = '';
-                $str = $this->getString($tConf['prefix']) . $str;
-                if ($tConf['autonumber']) {
+                $str = $this->getString($tConf['prefix'] ?? '') . $str;
+                if (isset($tConf['autonumber'])) {
                     $str = $this->cObj->parentRecordNumber . $str;
                 }
                 if ($this->cObj->data['header_position'] === 'right') {
@@ -412,20 +412,20 @@ class DirectMail extends AbstractPlugin
                 if ($this->cObj->data['header_position'] === 'center') {
                     $prefix = str_pad(' ', floor(($this->charWidth-strlen($str))/2));
                 }
-                $lines[] = $this->cObj->stdWrap($prefix . $str, $tConf['stdWrap.']);
+                $lines[] = $this->cObj->stdWrap($prefix . $str, $tConf['stdWrap.'] ?? []);
 
                 if ($this->cObj->data['header_link']) {
                     $lines[] = $this->getString($hConf['linkPrefix']) . $this->getLink($this->cObj->data['header_link']);
                 }
 
-                $blanks = DirectMailUtility::intInRangeWrapper((int)$tConf['postLineBlanks'], 0, 1000);
+                $blanks = DirectMailUtility::intInRangeWrapper((int)($tConf['postLineBlanks'] ?? 0), 0, 1000);
                 if ($blanks) {
                     $lines[] = str_pad('', $blanks-1, LF);
                 }
 
-                $lines = $this->pad($lines, $tConf['postLineChar'], $tConf['postLineLen']);
+                $lines = $this->pad($lines, $tConf['postLineChar'] ?? '', (int)($tConf['postLineLen'] ?? 0));
 
-                $blanks = DirectMailUtility::intInRangeWrapper((int)$tConf['postBlanks'], 0, 1000);
+                $blanks = DirectMailUtility::intInRangeWrapper((int)($tConf['postBlanks'] ?? 0), 0, 1000);
                 if ($blanks) {
                     $lines[] = str_pad('', $blanks-1, LF);
                 }
@@ -497,14 +497,14 @@ class DirectMail extends AbstractPlugin
                 continue;
             }
             $c++;
-            $bullet = $tConf['bullet'] ? $this->getString($tConf['bullet']) : ' - ';
+            $bullet = $this->getString($tConf['bullet']) ?? ' - ';
             $bLen = strlen($bullet);
             $bullet = substr(str_replace('#', $c, $bullet), 0, $bLen);
-            $secondRow = substr($tConf['secondRow']?$this->getString($tConf['secondRow']):str_pad('', strlen($bullet), ' '), 0, $bLen);
+            $secondRow = substr(isset($tConf['secondRow']) ? $this->getString($tConf['secondRow']) : str_pad('', strlen($bullet), ' '), 0, $bLen);
 
             $lines[] = $bullet . $this->breakLines($substrs, LF . $secondRow, $this->charWidth-$bLen);
 
-            $blanks = DirectMailUtility::intInRangeWrapper((int)$tConf['blanks'], 0, 1000);
+            $blanks = DirectMailUtility::intInRangeWrapper((int)($tConf['blanks'] ?? 0), 0, 1000);
             if ($blanks) {
                 $lines[] = str_pad('', $blanks-1, LF);
             }
@@ -524,7 +524,7 @@ class DirectMail extends AbstractPlugin
         $cParts = explode(LF, $str);
 
         $lines = [];
-        $cols = (int)$this->conf['cols'] ?: 0;
+        $cols = (int)($this->conf['cols'] ?? 0);
         $c = 0;
         foreach ($cParts as $substrs) {
             $c++;
@@ -643,14 +643,14 @@ class DirectMail extends AbstractPlugin
                 }
                 if ($image['caption']) {
                     $cHeader = trim($this->getString($this->conf[$fieldname.'.']['captionHeader']));
-                    $lines[] = $cHeader . ' ' .$this->breakContent($image['caption']);
+                    $lines[] = $cHeader . ' ' . $this->breakContent($image['caption']);
                 }
                 // add newline
                 $lines[] = '';
                 $imageExists = true;
             }
         }
-        if ($this->conf[$fieldname.'.']['header'] && $imageExists) {
+        if (isset($this->conf[$fieldname.'.']['header']) && $imageExists) {
             array_unshift($lines, $this->getString($this->conf[$fieldname.'.']['header']));
         }
 
@@ -706,7 +706,7 @@ class DirectMail extends AbstractPlugin
     public function getString($str)
     {
         $parts = explode('|', $str);
-        return strcmp($parts[1], '')?$parts[1]:$parts[0];
+        return strcmp($parts[1] ?? '', '') ? ($parts[1] ?? '') : ($parts[0] ?? '');
     }
 
     /**
@@ -719,7 +719,7 @@ class DirectMail extends AbstractPlugin
      */
     public function userProcess($mConfKey, $passVar)
     {
-        if ($this->conf[$mConfKey]) {
+        if ($this->conf[$mConfKey] ?? false) {
             $funcConf = $this->conf[$mConfKey . '.'];
             $funcConf['parentObj']=&$this;
             $passVar = $GLOBALS['TSFE']->cObj->callUserFunction($this->conf[$mConfKey], $funcConf, $passVar);
@@ -740,7 +740,7 @@ class DirectMail extends AbstractPlugin
     public function atag_to_http($content, $conf)
     {
         $this->conf = $conf;
-        $this->siteUrl = $conf['siteUrl'];
+        $this->siteUrl = $conf['siteUrl'] ?? '';
         $theLink = trim($this->cObj->parameters['href']);
 
         $theLink = $this->getLink($theLink);
@@ -764,7 +764,7 @@ class DirectMail extends AbstractPlugin
     public function typolist($content, $conf)
     {
         $this->conf = $this->cObj->mergeTSRef($conf, 'bulletlist');
-        $this->siteUrl = $conf['siteUrl'];
+        $this->siteUrl = $conf['siteUrl'] ?? '';
         $str = trim($this->cObj->getCurrentVal());
         $this->cObj->data['layout'] = $this->cObj->parameters['type'];
         return $this->breakBulletlist($str);
@@ -782,7 +782,7 @@ class DirectMail extends AbstractPlugin
     {
         $this->conf = $this->cObj->mergeTSRef($conf, 'header');
 
-        $this->siteUrl = $conf['siteUrl'];
+        $this->siteUrl = $conf['siteUrl'] ?? '';
         $str = trim($this->cObj->getCurrentVal());
         $this->cObj->data['header_layout'] = $this->cObj->parameters['type'];
         $this->cObj->data['header_position'] = $this->cObj->parameters['align'];
@@ -803,7 +803,7 @@ class DirectMail extends AbstractPlugin
     {
         // Nothing is really done here...
         $this->conf = $conf;
-        $this->siteUrl = $conf['siteUrl'];
+        $this->siteUrl = $conf['siteUrl'] ?? '';
         return $this->cObj->getCurrentVal();
     }
 

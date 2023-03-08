@@ -12,6 +12,7 @@ lib.contentElement {
 }
 [global]
 
+# libs
 lib.plaintextHeader = COA
 lib.plaintextHeader {
   10 = USER
@@ -29,6 +30,7 @@ lib.plaintextBullets < lib.plaintextHeader
 lib.plaintextTable < lib.plaintextHeader
 lib.plaintextHTML < lib.plaintextHeader
 
+# plugin
 plugin.tx_directmail_pi1 = USER
 plugin.tx_directmail_pi1 {
   userFunc = DirectMailTeam\DirectMail\Plugin\DirectMail->main
@@ -108,15 +110,15 @@ plugin.tx_directmail_pi1 {
   }
 }
 
+# plaintext as PAGE
 tx_directmail_pi1 >
 tx_directmail_pi1 = PAGE
 tx_directmail_pi1.typeNum = 99
 
 tx_directmail_pi1.config {
-	disableAllHeaderCode = 1
-  additionalHeaders.10.header = Content-type:text/plain
+    disableAllHeaderCode = 1
+    additionalHeaders.10.header = Content-type:text/plain
 }
-
 tx_directmail_pi1 {
 	10 = FLUIDTEMPLATE
 	10 {

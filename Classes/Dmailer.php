@@ -261,14 +261,16 @@ class Dmailer implements LoggerAwareInterface
         }
 
         foreach ($rowFieldsArray as $substField) {
-            $subst = $this->getCharsetConverter()->conv($recipRow[$substField], $this->backendCharset, $this->charset);
-            $markers['###USER_' . $substField . '###'] = $subst;
+            if (isset($recipRow[$substField])) {
+                $subst = $this->getCharsetConverter()->conv($recipRow[$substField], $this->backendCharset, $this->charset);
+                $markers['###USER_' . $substField . '###'] = $subst;
+            }
         }
 
         // uppercase fields with uppercased values
         $uppercaseFieldsArray = ['name', 'firstname'];
         foreach ($uppercaseFieldsArray as $substField) {
-            $subst = $this->getCharsetConverter()->conv($recipRow[$substField], $this->backendCharset, $this->charset);
+            $subst = $this->getCharsetConverter()->conv($recipRow[$substField] ?? '', $this->backendCharset, $this->charset);
             $markers['###USER_' . strtoupper($substField) . '###'] = strtoupper($subst);
         }
 
@@ -308,7 +310,9 @@ class Dmailer implements LoggerAwareInterface
 
         // check recipRow for HTML
         foreach ($recipRow as $k => $v) {
-            $tempRow[$k] = htmlspecialchars($v);
+            if (isset($v)) {
+                $tempRow[$k] = htmlspecialchars($v);
+            }
         }
         unset($recipRow);
         $recipRow = $tempRow;
@@ -334,8 +338,8 @@ class Dmailer implements LoggerAwareInterface
 
             $this->mediaList = '';
             $this->theParts['html']['content'] = '';
-            if ($this->flag_html && ($recipRow['module_sys_dmail_html'] || $tableNameChar == 'P')) {
-                $tempContent_HTML = $this->dmailer_getBoundaryParts($this->dmailer['boundaryParts_html'], $recipRow['sys_dmail_categories_list']);
+            if ($this->flag_html && (isset($recipRow['module_sys_dmail_html']) || $tableNameChar == 'P')) {
+                $tempContent_HTML = $this->dmailer_getBoundaryParts($this->dmailer['boundaryParts_html'], $recipRow['sys_dmail_categories_list'] ?? -1);
                 if ($this->mailHasContent) {
                     $tempContent_HTML = $this->replaceMailMarkers($tempContent_HTML, $recipRow, $additionalMarkers);
                     $this->theParts['html']['content'] = $this->encodeMsg($tempContent_HTML);
@@ -346,7 +350,7 @@ class Dmailer implements LoggerAwareInterface
             // Plain
             $this->theParts['plain']['content'] = '';
             if ($this->flag_plain) {
-                $tempContent_Plain = $this->dmailer_getBoundaryParts($this->dmailer['boundaryParts_plain'], $recipRow['sys_dmail_categories_list']);
+                $tempContent_Plain = $this->dmailer_getBoundaryParts($this->dmailer['boundaryParts_plain'], $recipRow['sys_dmail_categories_list'] ?? -1);
                 if ($this->mailHasContent) {
                     $tempContent_Plain = $this->replaceMailMarkers($tempContent_Plain, $recipRow, $additionalMarkers);
                     if (trim($this->dmailer['sys_dmail_rec']['use_rdct']) || trim($this->dmailer['sys_dmail_rec']['long_link_mode'])) {
@@ -364,7 +368,7 @@ class Dmailer implements LoggerAwareInterface
             $recipient = [];
             if (GeneralUtility::validEmail($recipRow['email'])) {
                 $email = $recipRow['email'];
-                $name = $this->ensureCorrectEncoding($recipRow['name']);
+                $name = $this->ensureCorrectEncoding($recipRow['name'] ?? $recipRow['email']);
 
                 $recipient = $this->createRecipient($email, $name);
             }
@@ -529,7 +533,7 @@ class Dmailer implements LoggerAwareInterface
                                 $c++;
                             }
                         }
-                    } 
+                    }
                     else {
                         $idList = implode(',', $listArr);
                         if ($idList) {
@@ -595,7 +599,7 @@ class Dmailer implements LoggerAwareInterface
                     $this->logger->critical($message);
                     die($message);
                 }
-            } 
+            }
             else {
                 // stop the script if dummy log can't be made
                 $message = 'Unable to update Log-Entry in table sys_dmail_maillog. Table full? Mass-Sending stopped. Delete each entries except the entries of active mailings (mid=' . $mid . ')';
@@ -621,11 +625,11 @@ class Dmailer implements LoggerAwareInterface
         }
 
         // Firstname must be more that 1 character
-        $recipRow['firstname'] = trim(strtok(trim($recipRow['name']), ' '));
+        $recipRow['firstname'] = trim(strtok(trim($recipRow['name'] ?? ''), ' '));
         if (strlen($recipRow['firstname']) < 2 || preg_match('|[^[:alnum:]]$|', $recipRow['firstname'])) {
             $recipRow['firstname'] = $recipRow['name'];
         }
-        if (!trim($recipRow['firstname'])) {
+        if (!trim($recipRow['firstname'] ?? '')) {
             $recipRow['firstname'] = $recipRow['email'];
         }
         return $recipRow;
@@ -793,9 +797,13 @@ class Dmailer implements LoggerAwareInterface
             $this->extractMediaLinks();
             foreach ($this->theParts['html']['media'] as $media) {
                 // TODO: why are there table related tags here?
-                if (($media['tag'] === 'img' || $media['tag'] === 'table' || $media['tag'] === 'tr' || $media['tag'] === 'td') && !$media['use_jumpurl'] && !$media['do_not_embed']) {
+                if (isset($media['tag'])
+                    && ($media['tag'] === 'img' || $media['tag'] === 'table' || $media['tag'] === 'tr' || $media['tag'] === 'td')
+                    && !$media['use_jumpurl']
+                    && !$media['do_not_embed']
+                ) {
                     if (ini_get('allow_url_fopen')) {
-                        if (($fp = fopen($media['absRef'], 'r')) !== false ) {
+                        if (isset($media['absRef']) && ($fp = fopen($media['absRef'], 'r')) !== false ) {
                             $mailer->embed($fp, basename($media['absRef']));
                         }
                     } else {
@@ -966,7 +974,7 @@ class Dmailer implements LoggerAwareInterface
      */
     public function substHREFsInHTML()
     {
-        if (!is_array($this->theParts['html']['hrefs'])) {
+        if (!isset($this->theParts['html']['hrefs']) || !is_array($this->theParts['html']['hrefs'])) {
             return;
         }
         foreach ($this->theParts['html']['hrefs'] as $urlId => $val) {
@@ -1260,7 +1268,7 @@ class Dmailer implements LoggerAwareInterface
         // get all media and search for use_jumpurl then add it to the hrefs array
         $this->extractMediaLinks();
         foreach ($this->theParts['html']['media'] as $mediaData) {
-            if ($mediaData['use_jumpurl'] === 1) {
+            if (isset($mediaData['use_jumpurl']) && $mediaData['use_jumpurl'] === 1) {
                 $this->theParts['html']['hrefs'][$mediaData['ref']] = $mediaData;
             }
         }

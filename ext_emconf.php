@@ -1,6 +1,6 @@
 <?php
 
-$EM_CONF[$_EXTKEY] = [
+$EM_CONF['direct_mail'] = [
     'title' => 'Direct Mail',
     'description' => 'Advanced Direct Mail/Newsletter mailer system with sophisticated options for personalization of emails including response statistics.',
     'category' => 'module',

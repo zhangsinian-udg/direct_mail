@@ -3,12 +3,9 @@ declare(strict_types=1);
 
 namespace DirectMailTeam\DirectMail\Utility;
 
-use DirectMailTeam\DirectMail\Repository\PagesRepository;
-use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Utility\CsvUtility;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class DmCsvUtility 
+class DmCsvUtility
 {
     /**
      * Parsing csv-formated text to an array
@@ -30,11 +27,11 @@ class DmCsvUtility
         while ($data = fgetcsv($fh, 1000, $sep)) {
             $lines[] = $data;
         }
-        
+
         fclose($fh);
         return $lines;
     }
-    
+
     /**
      * Parse CSV lines into array form
      *
@@ -63,11 +60,11 @@ class DmCsvUtility
             }
             $fieldName = 1;
             $fieldOrder = [];
-            
+
             foreach ($first as $v) {
-                list($fName, $fConf) = preg_split('|[\[\]]|', $v);
-                $fName = trim($fName);
-                $fConf = trim($fConf);
+                $list = preg_split('|[\[\]]|', $v);
+                $fName = isset($list[0]) ? trim($list[0]) : '';
+                $fConf = isset($list[1]) ? trim($list[1]) : '';
                 $fieldOrder[] = [$fName, $fConf];
                 if ($fName && substr($fName, 0, 5) != 'user_' && !in_array($fName, $fieldListArr)) {
                     $fieldName = 0;
@@ -87,7 +84,7 @@ class DmCsvUtility
                 // Advance pointer if the first line was field names
                 next($lines);
             }
-            
+
             $c = 0;
             foreach ($lines as $data) {
                 // Must be a line with content.
@@ -95,10 +92,10 @@ class DmCsvUtility
                 if (count($data) > 1 || $data[0]) {
                     // Traverse fieldOrder and map values over
                     foreach ($fieldOrder as $kk => $fN) {
-                        if ($fN[0]) {
-                            if ($fN[1]) {
+                        if ($fN[0] ?? false) {
+                            if ($fN[1] ?? false) {
                                 // If is true
-                                if (trim($data[$kk])) {
+                                if (($data[$kk] ?? false) && trim($data[$kk])) {
                                     if (substr($fN[1], 0, 1) == '=') {
                                         $out[$c][$fN[0]] = trim(substr($fN[1], 1));
                                     }
@@ -107,7 +104,7 @@ class DmCsvUtility
                                     }
                                 }
                             }
-                            else {
+                            elseif ($data[$kk] ?? false) {
                                 $out[$c][$fN[0]] = trim($data[$kk]);
                             }
                         }
@@ -133,13 +130,13 @@ class DmCsvUtility
         if (is_array($idArr) && count($idArr)) {
             reset($idArr);
             $lines[] = CsvUtility::csvValues(array_keys(current($idArr)));
-            
+
             reset($idArr);
             foreach ($idArr as $rec) {
                 $lines[] = CsvUtility::csvValues($rec);
             }
         }
-        
+
         $filename = 'DirectMail_export_' . date('dmy-Hi') . '.csv';
         $mimeType = 'application/octet-stream';
         header('Content-Type: ' . $mimeType);

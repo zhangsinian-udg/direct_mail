@@ -302,7 +302,7 @@ class MainController {
             $tableIcon = $this->iconFactory->getIconForRecord($table, []);
             foreach ($listArr as $row) {
                 $editLink = '';
-                if ($row['uid'] && $isAllowedEditTable) {
+                if (($row['uid'] ?? false) && $isAllowedEditTable) {
                     $urlParameters = [
                         'edit' => [
                             $table => [
